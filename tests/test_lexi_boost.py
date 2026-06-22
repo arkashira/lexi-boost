@@ -1,37 +1,33 @@
-from lexi_boost import LexiBoost, CompletionItem
+from lexi_boost import LexiBoost, CodeSnippet
 
-def test_get_completion_items():
+def test_add_code_snippet():
     lexi_boost = LexiBoost()
-    completion_items = lexi_boost.get_completion_items("python")
-    assert len(completion_items) == 1
-    assert completion_items[0].label == "print"
+    lexi_boost.add_code_snippet("Python", "print('Hello World')")
+    assert len(lexi_boost.get_code_snippets()) == 1
 
-def test_register_completion_provider():
+def test_get_code_snippets():
     lexi_boost = LexiBoost()
-    result = lexi_boost.register_completion_provider("python")
-    assert result == "Registered completion provider for python"
+    lexi_boost.add_code_snippet("Python", "print('Hello World')")
+    lexi_boost.add_code_snippet("Go", "fmt.Println('Hello World')")
+    assert len(lexi_boost.get_code_snippets("Python")) == 1
+    assert len(lexi_boost.get_code_snippets("Go")) == 1
 
-def test_register_completion_provider_unsupported_language():
+def test_generate_documentation():
     lexi_boost = LexiBoost()
-    try:
-        lexi_boost.register_completion_provider("java")
-        assert False, "Expected ValueError"
-    except ValueError as e:
-        assert str(e) == "Unsupported language: java"
+    lexi_boost.add_code_snippet("Python", "print('Hello World')")
+    documentation = lexi_boost.generate_documentation("Python")
+    assert "### Python" in documentation
+    assert "print('Hello World')" in documentation
 
-def test_get_completion_suggestions():
+def test_detect_bugs():
     lexi_boost = LexiBoost()
-    completion_items = lexi_boost.get_completion_suggestions("python", "pr")
-    assert len(completion_items) == 1
-    assert completion_items[0].label == "print"
+    code = "print('Hello World'"
+    assert "Bug detected: syntax error" in lexi_boost.detect_bugs(code)
+    code = "print('Hello World')"
+    assert "No bugs detected" in lexi_boost.detect_bugs(code)
 
-def test_get_completion_suggestions_empty_prefix():
+def test_complete_code():
     lexi_boost = LexiBoost()
-    completion_items = lexi_boost.get_completion_suggestions("python", "")
-    assert len(completion_items) == 1
-    assert completion_items[0].label == "print"
-
-def test_get_completion_suggestions_no_match():
-    lexi_boost = LexiBoost()
-    completion_items = lexi_boost.get_completion_suggestions("python", "xyz")
-    assert len(completion_items) == 0
+    code = "print('Hello World')"
+    completed_code = lexi_boost.complete_code(code, "Python")
+    assert "print('Completed code in Python')" in completed_code

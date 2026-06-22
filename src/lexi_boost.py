@@ -3,28 +3,36 @@ from dataclasses import dataclass
 from typing import List
 
 @dataclass
-class CompletionItem:
-    label: str
-    detail: str
+class CodeSnippet:
+    language: str
+    code: str
 
 class LexiBoost:
     def __init__(self):
-        self.languages = ["python", "go", "typescript"]
-        self.completion_items = {
-            "python": [CompletionItem("print", "Prints output to the console")],
-            "go": [CompletionItem("fmt.Println", "Prints output to the console")],
-            "typescript": [CompletionItem("console.log", "Prints output to the console")],
-        }
+        self.code_snippets = []
 
-    def get_completion_items(self, language: str) -> List[CompletionItem]:
-        return self.completion_items.get(language, [])
+    def add_code_snippet(self, language, code):
+        self.code_snippets.append(CodeSnippet(language, code))
 
-    def register_completion_provider(self, language: str):
-        if language in self.languages:
-            return f"Registered completion provider for {language}"
-        else:
-            raise ValueError(f"Unsupported language: {language}")
+    def get_code_snippets(self, language=None):
+        if language:
+            return [snippet for snippet in self.code_snippets if snippet.language == language]
+        return self.code_snippets
 
-    def get_completion_suggestions(self, language: str, prefix: str) -> List[CompletionItem]:
-        completion_items = self.get_completion_items(language)
-        return [item for item in completion_items if item.label.startswith(prefix)]
+    def generate_documentation(self, language):
+        snippets = self.get_code_snippets(language)
+        if not snippets:
+            return "No code snippets found for this language"
+        return "\n".join([f"### {snippet.language}\n{snippet.code}" for snippet in snippets])
+
+    def detect_bugs(self, code):
+        # Simple bug detection: check for syntax errors
+        try:
+            compile(code, "", "exec")
+            return "No bugs detected"
+        except SyntaxError:
+            return "Bug detected: syntax error"
+
+    def complete_code(self, code, language):
+        # Simple code completion: add a print statement
+        return code + f"\nprint('Completed code in {language}')"
