@@ -4,8 +4,8 @@ build-backend = "poetry.masonry.api"
 
 [tool.poetry]
 name = "lexi-boost"
-version = "1.0.0"
-description = ""
+version = "0.1.0"
+description = "A VS Code extension for detecting bugs in real time"
 
 [tool.poetry.dependencies]
 python = "^3.8"

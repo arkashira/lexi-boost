@@ -1,33 +1,48 @@
-from lexi_boost import LexiBoost, CodeSnippet
-
-def test_add_code_snippet():
-    lexi_boost = LexiBoost()
-    lexi_boost.add_code_snippet("Python", "print('Hello World')")
-    assert len(lexi_boost.get_code_snippets()) == 1
-
-def test_get_code_snippets():
-    lexi_boost = LexiBoost()
-    lexi_boost.add_code_snippet("Python", "print('Hello World')")
-    lexi_boost.add_code_snippet("Go", "fmt.Println('Hello World')")
-    assert len(lexi_boost.get_code_snippets("Python")) == 1
-    assert len(lexi_boost.get_code_snippets("Go")) == 1
-
-def test_generate_documentation():
-    lexi_boost = LexiBoost()
-    lexi_boost.add_code_snippet("Python", "print('Hello World')")
-    documentation = lexi_boost.generate_documentation("Python")
-    assert "### Python" in documentation
-    assert "print('Hello World')" in documentation
+from lexi_boost import LexiBoost, Bug
 
 def test_detect_bugs():
     lexi_boost = LexiBoost()
-    code = "print('Hello World'"
-    assert "Bug detected: syntax error" in lexi_boost.detect_bugs(code)
-    code = "print('Hello World')"
-    assert "No bugs detected" in lexi_boost.detect_bugs(code)
+    code = 'let x = 5\nlet y = 10'
+    bugs = lexi_boost.detect_bugs(code)
+    assert len(bugs) == 2
+    assert bugs[0].line == 1
+    assert bugs[0].column == 9
+    assert bugs[0].message == 'Missing semicolon'
+    assert bugs[1].line == 2
+    assert bugs[1].column == 10
+    assert bugs[1].message == 'Missing semicolon'
 
-def test_complete_code():
+def test_highlight_bugs():
     lexi_boost = LexiBoost()
-    code = "print('Hello World')"
-    completed_code = lexi_boost.complete_code(code, "Python")
-    assert "print('Completed code in Python')" in completed_code
+    code = 'let x = 5\nlet y = 10'
+    bugs = lexi_boost.detect_bugs(code)
+    highlighted_code = lexi_boost.highlight_bugs(code, bugs)
+    assert 'Missing semicolon' in highlighted_code
+
+def test_get_tooltip():
+    lexi_boost = LexiBoost()
+    bug = Bug(1, 10, 'Missing semicolon')
+    tooltip = lexi_boost.get_tooltip(bug)
+    assert tooltip == 'Line 1, Column 10: Missing semicolon'
+
+def test_detect_bugs_empty_code():
+    lexi_boost = LexiBoost()
+    code = ''
+    bugs = lexi_boost.detect_bugs(code)
+    assert len(bugs) == 0
+
+def test_highlight_bugs_empty_code():
+    lexi_boost = LexiBoost()
+    code = ''
+    bugs = lexi_boost.detect_bugs(code)
+    highlighted_code = lexi_boost.highlight_bugs(code, bugs)
+    assert highlighted_code == ''
+
+def test_get_tooltip_none_bug():
+    lexi_boost = LexiBoost()
+    bug = None
+    try:
+        tooltip = lexi_boost.get_tooltip(bug)
+        assert False, 'Expected AttributeError'
+    except AttributeError:
+        assert True

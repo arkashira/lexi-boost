@@ -1,38 +1,51 @@
 import json
 from dataclasses import dataclass
-from typing import List
+from typing import List, Optional
 
 @dataclass
-class CodeSnippet:
-    language: str
-    code: str
+class Bug:
+    line: int
+    column: int
+    message: str
 
 class LexiBoost:
     def __init__(self):
-        self.code_snippets = []
+        self.bugs: List[Bug] = []
 
-    def add_code_snippet(self, language, code):
-        self.code_snippets.append(CodeSnippet(language, code))
+    def detect_bugs(self, code: str) -> List[Bug]:
+        """
+        Detect simple syntax errors: missing semicolons or colons at line ends.
+        Returns a fresh list of Bug objects for each call.
+        """
+        self.bugs = []  # reset for each detection
+        lines = code.split('\n')
+        for i, line in enumerate(lines):
+            stripped = line.strip()
+            if stripped == '':
+                continue
+            if not stripped.endswith(';') and not stripped.endswith(':'):
+                # column is 1-indexed position of the end of the line
+                column = len(line)
+                self.bugs.append(Bug(i + 1, column, 'Missing semicolon'))
+        return self.bugs
 
-    def get_code_snippets(self, language=None):
-        if language:
-            return [snippet for snippet in self.code_snippets if snippet.language == language]
-        return self.code_snippets
+    def highlight_bugs(self, code: str, bugs: List[Bug]) -> str:
+        """
+        Append a comment with the bug message to each affected line.
+        Handles empty code gracefully.
+        """
+        if not code:
+            return ''
+        lines = code.split('\n')
+        for bug in bugs:
+            # Ensure we don't go out of bounds
+            if 1 <= bug.line <= len(lines):
+                lines[bug.line - 1] += f'  # {bug.message}'
+        return '\n'.join(lines)
 
-    def generate_documentation(self, language):
-        snippets = self.get_code_snippets(language)
-        if not snippets:
-            return "No code snippets found for this language"
-        return "\n".join([f"### {snippet.language}\n{snippet.code}" for snippet in snippets])
-
-    def detect_bugs(self, code):
-        # Simple bug detection: check for syntax errors
-        try:
-            compile(code, "", "exec")
-            return "No bugs detected"
-        except SyntaxError:
-            return "Bug detected: syntax error"
-
-    def complete_code(self, code, language):
-        # Simple code completion: add a print statement
-        return code + f"\nprint('Completed code in {language}')"
+    def get_tooltip(self, bug: Bug) -> str:
+        """
+        Return a formatted tooltip string for a Bug instance.
+        Raises AttributeError if bug is None or missing attributes.
+        """
+        return f'Line {bug.line}, Column {bug.column}: {bug.message}'
