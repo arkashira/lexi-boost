@@ -1,40 +1,44 @@
-import sys
+from lexi_boost import LexiBoost, CodeSnippet
+import json
 import os
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
-from lexi_boost import generate_code, check_dependencies, check_api_signatures, check_static_type, LLMConfig, Dependency
 import pytest
 
-def test_generate_code():
-    llm_config = LLMConfig([Dependency("math", "1.0")])
-    prompt = "print(math.pi)"
-    code = generate_code(llm_config, prompt)
-    assert code == "import math\nprint(math.pi)\n"
+@pytest.fixture
+def repo_path(tmp_path):
+    # Create a temporary repository path
+    return tmp_path / "repo"
 
-def test_check_dependencies():
-    code = "import math\nprint(math.pi)"
-    dependencies = [Dependency("math", "1.0")]
-    assert check_dependencies(code, dependencies)
+@pytest.fixture
+def api_specs_path(tmp_path):
+    # Create a temporary API specs path
+    api_specs = {"openapi": "3.0.0", "info": {"title": "API", "version": "1.0.0"}}
+    api_specs_path = tmp_path / "api_specs.json"
+    with open(api_specs_path, "w") as f:
+        json.dump(api_specs, f)
+    return api_specs_path
 
-def test_check_dependencies_failure():
-    code = "import math\nprint(math.pi)"
-    dependencies = [Dependency("random", "1.0")]
-    assert not check_dependencies(code, dependencies)
+def test_lexi_boost_init(repo_path, api_specs_path):
+    lexi_boost = LexiBoost(repo_path, api_specs_path)
+    assert lexi_boost.repo_path == repo_path
+    assert lexi_boost.api_specs_path == api_specs_path
 
-def test_check_api_signatures():
-    code = "import math\nprint(math.pi)"
-    dependencies = [Dependency("math", "1.0")]
-    assert check_api_signatures(code, dependencies)
+def test_lexi_boost_train_model(repo_path, api_specs_path):
+    lexi_boost = LexiBoost(repo_path, api_specs_path)
+    trained_model = lexi_boost.train_model()
+    assert isinstance(trained_model, CodeSnippet)
+    assert trained_model.syntax_accuracy == 0.95
 
-def test_check_api_signatures_failure():
-    code = "import math\nprint(pi)"
-    dependencies = [Dependency("math", "1.0")]
-    assert not check_api_signatures(code, dependencies)
+def test_lexi_boost_generate_code_snippet(repo_path, api_specs_path):
+    lexi_boost = LexiBoost(repo_path, api_specs_path)
+    code_snippet = lexi_boost.generate_code_snippet()
+    assert code_snippet == "print('Hello World')"
 
-def test_check_static_type():
-    code = "import math\nprint(math.pi)"
-    assert check_static_type(code)
+def test_lexi_boost_invalid_api_specs_path(repo_path):
+    invalid_api_specs_path = "invalid_path"
+    with pytest.raises(FileNotFoundError):
+        LexiBoost(repo_path, invalid_api_specs_path)
 
-def test_check_static_type_failure():
-    code = "import math\nprint(math."
-    assert not check_static_type(code)
+def test_lexi_boost_invalid_repo_path(api_specs_path):
+    invalid_repo_path = "invalid_path"
+    lexi_boost = LexiBoost(invalid_repo_path, api_specs_path)
+    assert lexi_boost.repo_path == invalid_repo_path
