@@ -1,48 +1,40 @@
-from lexi_boost import LexiBoost, Bug
+import sys
+import os
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-def test_detect_bugs():
-    lexi_boost = LexiBoost()
-    code = 'let x = 5\nlet y = 10'
-    bugs = lexi_boost.detect_bugs(code)
-    assert len(bugs) == 2
-    assert bugs[0].line == 1
-    assert bugs[0].column == 9
-    assert bugs[0].message == 'Missing semicolon'
-    assert bugs[1].line == 2
-    assert bugs[1].column == 10
-    assert bugs[1].message == 'Missing semicolon'
+from lexi_boost import generate_code, check_dependencies, check_api_signatures, check_static_type, LLMConfig, Dependency
+import pytest
 
-def test_highlight_bugs():
-    lexi_boost = LexiBoost()
-    code = 'let x = 5\nlet y = 10'
-    bugs = lexi_boost.detect_bugs(code)
-    highlighted_code = lexi_boost.highlight_bugs(code, bugs)
-    assert 'Missing semicolon' in highlighted_code
+def test_generate_code():
+    llm_config = LLMConfig([Dependency("math", "1.0")])
+    prompt = "print(math.pi)"
+    code = generate_code(llm_config, prompt)
+    assert code == "import math\nprint(math.pi)\n"
 
-def test_get_tooltip():
-    lexi_boost = LexiBoost()
-    bug = Bug(1, 10, 'Missing semicolon')
-    tooltip = lexi_boost.get_tooltip(bug)
-    assert tooltip == 'Line 1, Column 10: Missing semicolon'
+def test_check_dependencies():
+    code = "import math\nprint(math.pi)"
+    dependencies = [Dependency("math", "1.0")]
+    assert check_dependencies(code, dependencies)
 
-def test_detect_bugs_empty_code():
-    lexi_boost = LexiBoost()
-    code = ''
-    bugs = lexi_boost.detect_bugs(code)
-    assert len(bugs) == 0
+def test_check_dependencies_failure():
+    code = "import math\nprint(math.pi)"
+    dependencies = [Dependency("random", "1.0")]
+    assert not check_dependencies(code, dependencies)
 
-def test_highlight_bugs_empty_code():
-    lexi_boost = LexiBoost()
-    code = ''
-    bugs = lexi_boost.detect_bugs(code)
-    highlighted_code = lexi_boost.highlight_bugs(code, bugs)
-    assert highlighted_code == ''
+def test_check_api_signatures():
+    code = "import math\nprint(math.pi)"
+    dependencies = [Dependency("math", "1.0")]
+    assert check_api_signatures(code, dependencies)
 
-def test_get_tooltip_none_bug():
-    lexi_boost = LexiBoost()
-    bug = None
-    try:
-        tooltip = lexi_boost.get_tooltip(bug)
-        assert False, 'Expected AttributeError'
-    except AttributeError:
-        assert True
+def test_check_api_signatures_failure():
+    code = "import math\nprint(pi)"
+    dependencies = [Dependency("math", "1.0")]
+    assert not check_api_signatures(code, dependencies)
+
+def test_check_static_type():
+    code = "import math\nprint(math.pi)"
+    assert check_static_type(code)
+
+def test_check_static_type_failure():
+    code = "import math\nprint(math."
+    assert not check_static_type(code)
