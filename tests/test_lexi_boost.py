@@ -1,44 +1,35 @@
-from lexi_boost import LexiBoost, CodeSnippet
-import json
-import os
 import pytest
+from src.lexi_boost import PullRequest, Suggestion, review_pull_request, post_review_comment
 
-@pytest.fixture
-def repo_path(tmp_path):
-    # Create a temporary repository path
-    return tmp_path / "repo"
+def test_review_pull_request_refactor():
+    pr = PullRequest(1, "2022-01-01T00:00:00Z", "def long_function(): pass")
+    suggestions = review_pull_request(pr)
+    assert len(suggestions) == 1
+    assert suggestions[0].type == "refactor"
+    assert suggestions[0].message == "Consider breaking down long functions into smaller ones"
 
-@pytest.fixture
-def api_specs_path(tmp_path):
-    # Create a temporary API specs path
-    api_specs = {"openapi": "3.0.0", "info": {"title": "API", "version": "1.0.0"}}
-    api_specs_path = tmp_path / "api_specs.json"
-    with open(api_specs_path, "w") as f:
-        json.dump(api_specs, f)
-    return api_specs_path
+def test_review_pull_request_security():
+    pr = PullRequest(1, "2022-01-01T00:00:00Z", "password = 'secret'")
+    suggestions = review_pull_request(pr)
+    assert len(suggestions) == 1
+    assert suggestions[0].type == "security"
+    assert suggestions[0].message == "Avoid hardcoding sensitive information like passwords"
 
-def test_lexi_boost_init(repo_path, api_specs_path):
-    lexi_boost = LexiBoost(repo_path, api_specs_path)
-    assert lexi_boost.repo_path == repo_path
-    assert lexi_boost.api_specs_path == api_specs_path
+def test_review_pull_request_style():
+    pr = PullRequest(1, "2022-01-01T00:00:00Z", "print('Hello World')")
+    suggestions = review_pull_request(pr)
+    assert len(suggestions) == 1
+    assert suggestions[0].type == "style"
+    assert suggestions[0].message == "Consider using a logging framework instead of print statements"
 
-def test_lexi_boost_train_model(repo_path, api_specs_path):
-    lexi_boost = LexiBoost(repo_path, api_specs_path)
-    trained_model = lexi_boost.train_model()
-    assert isinstance(trained_model, CodeSnippet)
-    assert trained_model.syntax_accuracy == 0.95
+def test_post_review_comment():
+    pr = PullRequest(1, "2022-01-01T00:00:00Z", "def long_function(): pass")
+    suggestions = [Suggestion("refactor", "Consider breaking down long functions into smaller ones")]
+    comment = post_review_comment(pr, suggestions)
+    assert comment == "Review comment for PR 1:\n- refactor: Consider breaking down long functions into smaller ones\n"
 
-def test_lexi_boost_generate_code_snippet(repo_path, api_specs_path):
-    lexi_boost = LexiBoost(repo_path, api_specs_path)
-    code_snippet = lexi_boost.generate_code_snippet()
-    assert code_snippet == "print('Hello World')"
-
-def test_lexi_boost_invalid_api_specs_path(repo_path):
-    invalid_api_specs_path = "invalid_path"
-    with pytest.raises(FileNotFoundError):
-        LexiBoost(repo_path, invalid_api_specs_path)
-
-def test_lexi_boost_invalid_repo_path(api_specs_path):
-    invalid_repo_path = "invalid_path"
-    lexi_boost = LexiBoost(invalid_repo_path, api_specs_path)
-    assert lexi_boost.repo_path == invalid_repo_path
+def test_post_review_comment_empty_suggestions():
+    pr = PullRequest(1, "2022-01-01T00:00:00Z", "")
+    suggestions = []
+    comment = post_review_comment(pr, suggestions)
+    assert comment == "Review comment for PR 1:\n"
